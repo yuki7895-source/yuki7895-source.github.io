@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>急救考試模擬 Flashcards - First Aid Case Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          "Helvetica Neue",
+          Arial,
+          "Microsoft JhengHei",
+          sans-serif;
+        background-color: #f8fafc;
+      }
+
+      /* 3D Card Flip Styles */
+      .perspective-1000 {
+        perspective: 1000px;
+      }
+
+      .card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        text-align: left;
+        transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-style: preserve-3d;
+      }
+
+      .card-inner.is-flipped {
+        transform: rotateY(180deg);
+      }
+
+      .card-front,
+      .card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        border-radius: 1rem;
+        overflow-y: auto;
+      }
+
+      .card-back {
+        transform: rotateY(180deg);
+      }
+
+      /* Custom Scrollbar inside cards */
+      .card-front::-webkit-scrollbar,
+      .card-back::-webkit-scrollbar {
+        width: 6px;
+      }
+      .card-front::-webkit-scrollbar-thumb,
+      .card-back::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 3px;
+      }
+
+      /* Pulsing red animation for timer warning */
+      @keyframes pulse-red {
+        0%,
+        100% {
+          background-color: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.8);
+        }
+        50% {
+          background-color: rgba(239, 68, 68, 0.3);
+          border-color: rgba(220, 38, 38, 1);
+        }
+      }
+      .timer-warning {
+        animation: pulse-red 1s infinite;
+        color: #dc2626 !important;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-800 flex flex-col">
+    <!-- Navigation Header -->
+    <header class="bg-red-700 text-white shadow-md">
+      <div
+        class="max-w-5xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="bg-white text-red-700 p-2.5 rounded-lg shadow font-black text-xl"
+          >
+            <i class="fa-solid fa-kit-medical"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold tracking-wide">
+              急救個案情境模擬閃卡
+            </h1>
+            <p class="text-xs text-red-100 opacity-90">
+              First Aid Exam Timer & Scenario Simulator
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Stats Header -->
+        <div
+          class="flex items-center gap-4 bg-red-800/60 px-4 py-2 rounded-xl border border-red-500/30 text-xs sm:text-sm"
+        >
+          <div>
+            <span class="text-red-200">總數:</span>
+            <span id="stat-total" class="font-bold">13</span>
+          </div>
+          <div class="h-4 w-[1px] bg-red-400/40"></div>
+          <div>
+            <span class="text-emerald-300">已掌握:</span>
+            <span id="stat-mastered" class="font-bold text-emerald-300">0</span>
+          </div>
+          <div class="h-4 w-[1px] bg-red-400/40"></div>
+          <div>
+            <span class="text-amber-300">需複習:</span>
+            <span id="stat-review" class="font-bold text-amber-300">0</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col gap-5">
+      <!-- Interactive Countdown Timer Bar -->
+      <div
+        id="timer-box"
+        class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all"
+      >
+        <div class="flex items-center gap-4">
+          <div
+            class="flex items-center justify-center bg-slate-100 p-3 rounded-xl"
+          >
+            <i
+              class="fa-solid fa-stopwatch text-2xl text-slate-600"
+              id="timer-icon"
+            ></i>
+          </div>
+          <div>
+            <div
+              class="text-xs font-semibold text-slate-400 uppercase tracking-wider"
+            >
+              個案倒數計時器 (Assessment Timer)
+            </div>
+            <div
+              id="timer-display"
+              class="text-3xl font-black font-mono text-slate-800 tracking-wider"
+            >
+              10:00
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer Control Buttons -->
+        <div
+          class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-center"
+        >
+          <button
+            id="btn-timer-start"
+            onclick="startTimer()"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+          >
+            <i class="fa-solid fa-play"></i> 開始
+          </button>
+          <button
+            id="btn-timer-pause"
+            onclick="pauseTimer()"
+            class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+            disabled
+          >
+            <i class="fa-solid fa-pause"></i> 暫停
+          </button>
+          <button
+            onclick="resetTimer()"
+            class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+          >
+            <i class="fa-solid fa-rotate-right"></i> 重置
+          </button>
+
+          <!-- Auto-Start Toggle Switch -->
+          <label
+            class="flex items-center gap-2 ml-2 cursor-pointer text-xs font-medium text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"
+          >
+            <input
+              type="checkbox"
+              id="auto-start-toggle"
+              class="rounded text-red-600 focus:ring-red-500"
+            />
+            <span>換卡自動計時</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Filter, Jump Selector & Search Control Panel -->
+      <div
+        class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3"
+      >
+        <!-- Direct Scenario Selector Dropdown -->
+        <div class="w-full md:w-64">
+          <select
+            id="scenario-dropdown"
+            onchange="jumpToSelectedScenario(this.value)"
+            class="w-full py-2 px-3 border border-slate-300 rounded-lg text-xs font-semibold bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative w-full md:w-60">
+          <i
+            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+          ></i>
+          <input
+            type="text"
+            id="search-input"
+            placeholder="搜尋關鍵字 (例如: 骨折, 割傷...)"
+            class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+          />
+        </div>
+
+        <!-- Filter Buttons -->
+        <div
+          class="flex flex-wrap items-center gap-1.5 w-full md:w-auto justify-center"
+        >
+          <button
+            onclick="setFilter('all')"
+            id="btn-filter-all"
+            class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white shadow-sm transition"
+          >
+            全部 (<span id="cnt-all">13</span>)
+          </button>
+          <button
+            onclick="setFilter('unlearned')"
+            id="btn-filter-unlearned"
+            class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+          >
+            未學 (<span id="cnt-unlearned">13</span>)
+          </button>
+          <button
+            onclick="setFilter('review')"
+            id="btn-filter-review"
+            class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+          >
+            待複習 (<span id="cnt-review">0</span>)
+          </button>
+          <button
+            onclick="setFilter('mastered')"
+            id="btn-filter-mastered"
+            class="filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+          >
+            已掌握 (<span id="cnt-mastered">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Card Display Zone -->
+      <div
+        id="card-container"
+        class="relative w-full h-[430px] sm:h-[400px] perspective-1000"
+      >
+        <!-- Flip Card Structure -->
+        <div
+          id="flashcard"
+          class="card-inner w-full h-full cursor-pointer shadow-xl rounded-2xl border border-slate-200"
+          onclick="toggleCardFlip()"
+        >
+          <!-- CARD FRONT (Scenario / Problem) -->
+          <div
+            class="card-front bg-white p-6 sm:p-8 flex flex-col justify-between border-t-8 border-red-600 rounded-2xl"
+          >
+            <div>
+              <!-- Card Header -->
+              <div
+                class="flex justify-between items-start mb-4 border-b border-slate-100 pb-3"
+              >
+                <span
+                  class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 px-3 py-1 rounded-full border border-red-200"
+                >
+                  <i class="fa-solid fa-triangle-exclamation"></i> 意外事件個案
+                </span>
+                <span
+                  id="time-limit-badge"
+                  class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200"
+                >
+                  <i class="fa-regular fa-clock"></i> 限時：<span
+                    id="time-limit-text"
+                    >10 分鐘</span
+                  >
+                </span>
+              </div>
+
+              <!-- Scenario Title / Narrative -->
+              <div class="mb-4">
+                <h2
+                  id="scenario-title"
+                  class="text-lg sm:text-xl font-bold text-slate-800 leading-snug mb-3"
+                >
+                  --
+                </h2>
+              </div>
+
+              <!-- Detailed Symptoms / Signs -->
+              <div
+                class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100"
+              >
+                <p
+                  class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1"
+                >
+                  傷者傷勢及症狀 (Symptoms):
+                </p>
+                <div
+                  id="symptoms-list"
+                  class="text-sm sm:text-base text-slate-700 space-y-1 font-medium"
+                >
+                  --
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Prompt -->
+            <div
+              class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400"
+            >
+              <span
+                >卡片 <span id="current-card-num">1</span> /
+                <span id="filtered-card-total">13</span></span
+              >
+              <span
+                class="flex items-center gap-1 text-red-600 font-semibold animate-pulse"
+              >
+                <i class="fa-solid fa-hand-pointer"></i> 點擊卡片或按 [Space]
+                翻看處置答案
+              </span>
+            </div>
+          </div>
+
+          <!-- CARD BACK (Assessment & Treatment) -->
+          <div
+            class="card-back bg-slate-900 text-white p-6 sm:p-8 flex flex-col justify-between border-t-8 border-emerald-500 rounded-2xl"
+          >
+            <div>
+              <!-- Card Header Back -->
+              <div
+                class="flex justify-between items-start mb-3 border-b border-slate-800 pb-3"
+              >
+                <span
+                  class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950 px-3 py-1 rounded-full border border-emerald-800"
+                >
+                  <i class="fa-solid fa-stethoscope"></i> 判斷及應進行的處置措施
+                </span>
+                <span class="text-xs text-slate-400">急救程序標準答案</span>
+              </div>
+
+              <!-- Assessment / Diagnosis -->
+              <div
+                class="mb-3 bg-emerald-950/60 border border-emerald-800/80 p-3 rounded-xl"
+              >
+                <p
+                  class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1"
+                >
+                  傷勢初步判斷 (Diagnosis):
+                </p>
+                <p
+                  id="diagnosis-text"
+                  class="text-sm sm:text-base font-semibold text-emerald-200"
+                >
+                  --
+                </p>
+              </div>
+
+              <!-- First Aid Treatment Procedure -->
+              <div class="space-y-2">
+                <p
+                  class="text-xs font-bold text-slate-400 uppercase tracking-wider"
+                >
+                  急救處理步驟 (First Aid Measures):
+                </p>
+                <div
+                  id="treatment-text"
+                  class="text-sm text-slate-200 leading-relaxed font-normal whitespace-pre-line bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60 max-h-[170px] overflow-y-auto"
+                >
+                  --
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Prompt Back -->
+            <div
+              class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400"
+            >
+              <span class="text-emerald-400 font-medium"
+                ><i class="fa-solid fa-circle-check"></i>
+                請逐一核對急救重點與包紮方法</span
+              >
+              <span class="flex items-center gap-1 text-slate-400">
+                <i class="fa-solid fa-rotate-left"></i> 點擊卡片翻回正面
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State View -->
+        <div
+          id="empty-state"
+          class="hidden absolute inset-0 bg-white rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center p-6 text-center"
+        >
+          <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-3"></i>
+          <h3 class="text-lg font-bold text-slate-600 mb-1">
+            沒有找到符合條件的個案
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            請嘗試調整搜尋關鍵字或切換分類標籤
+          </p>
+          <button
+            onclick="setFilter('all')"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition"
+          >
+            顯示全部 13 張卡片
+          </button>
+        </div>
+      </div>
+
+      <!-- User Assessment Actions & Navigation Controls -->
+      <div class="flex flex-col gap-3">
+        <!-- Status Marking Action Buttons -->
+        <div class="flex items-center justify-center gap-3">
+          <button
+            onclick="markStatus('review')"
+            class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+            需要再複習
+          </button>
+          <button
+            onclick="markStatus('mastered')"
+            class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-circle-check text-emerald-600"></i> 已完全掌握
+          </button>
+        </div>
+
+        <!-- Card Navigation Toolbar -->
+        <div
+          class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-2"
+        >
+          <button
+            onclick="prevCard()"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-chevron-left"></i> 上一張
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button
+              onclick="toggleCardFlip()"
+              class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1"
+            >
+              <i class="fa-solid fa-rotate"></i>
+              <span class="hidden sm:inline">翻轉卡片</span>
+            </button>
+            <button
+              onclick="randomCard()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-sm transition flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-shuffle"></i> 隨機抽卡 [R]
+            </button>
+          </div>
+
+          <button
+            onclick="nextCard()"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5"
+          >
+            下一張 <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenario Index Grid -->
+      <div
+        class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-1"
+      >
+        <div class="flex justify-between items-center mb-3">
+          <h3
+            class="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wider"
+          >
+            <i class="fa-solid fa-list-check text-red-600"></i> 個案快速導航
+            (Quick Navigator)
+          </h3>
+          <button
+            onclick="resetProgress()"
+            class="text-xs text-slate-400 hover:text-red-600 transition"
+          >
+            <i class="fa-solid fa-rotate-right"></i> 重置學習進度
+          </button>
+        </div>
+        <div
+          id="quick-nav-grid"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"
+        >
+          <!-- Dynamically Generated -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer
+      class="bg-slate-800 text-slate-400 text-xs py-4 text-center mt-auto border-t border-slate-700"
+    >
+      <p>急救考核考試情境練習工具 • 包含全部 13 個個案及對應限時包紮處置標準</p>
+    </footer>
+
+    <!-- Audio Context for Warning Sound -->
+    <script>
+      // All 13 Scenarios directly parsed from text file
+      const scenariosData = [
+        {
+          id: 1,
+          title: "乘客從車上被拋出墮地",
+          timeLimitMinutes: 10,
+          symptoms: [
+            "a. 左髖及腹股溝疼痛，不能站立",
+            "b. 右前臂被玻璃割傷，出血",
+          ],
+          diagnosis: "懷疑傷者左盆骨骨折；右前臂出血。",
+          treatment:
+            "1. 檢查傷口有無異物，以敷料按壓出血部位10秒。\n2. 以螺旋包紮法包紮傷口處，再以三角掛固定右臂。\n3. 以一條橫闊帶由膝蓋部位穿過並置於膝蓋部位、再以一條窄帶於腳踝部位穿過並置於此位置；在膝蓋與腳踝之間放上軟墊。\n4. 先以 8 字形包紮法綁緊雙腳；再以闊帶綁緊雙膝。綁結在非受傷一邊。",
+        },
+        {
+          id: 2,
+          title: "交通意外司機右胸撞向駕盤",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 呼吸困難，右胸有對抗性呼吸現象",
+            "b. 左膝被玻璃割傷出血，但活動並未受影響",
+          ],
+          diagnosis: "懷疑傷者右胸部陷傷；左膝出血。",
+          treatment:
+            "1. 以軟墊置於傷者右胸部並讓傷者以右手斜放於胸部，再以三角掛、橫闊帶固定，再令傷者半坐臥並稍側向受傷方向。\n2. 先檢查傷口無異物後以敷料直接按壓傷口10秒，以人字型包紮法包紮後。\n3. 檢查傷肢末端循環無問題後，以柔軟物料承托以收止血之效。",
+        },
+        {
+          id: 3,
+          title: "乘客車輛翻側後被壓傷腿",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 左大腿中段變形，腫脹且失去活動能力",
+            "b. 右手背擦傷出血",
+          ],
+          diagnosis: "懷疑左大腿骨折，右手背出血。",
+          treatment:
+            '1. 右手背：敷料直接按壓10秒，以2" 8字帶包紮，三角掛固定。\n2. 左大腿：軟墊，窄帶固定腳部 (可不脫鞋)。\n3. 以三條闊帶分別固定膝蓋部位及傷處對上和傷處對下位置。',
+        },
+        {
+          id: 4,
+          title: "某人由人字梯失重跌下",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 左大腿中段變形，腫脹且失去活動能力",
+            "b. 右手掌擦傷，輕微出血",
+          ],
+          diagnosis: "懷疑傷者左大腿骨折及右手掌出血。",
+          treatment:
+            "1. 右手掌：敷料直接壓法10秒，8字形包紮傷口，三角掛固定右手。\n2. 左大腿：窄帶固定腳部。\n3. 以3條闊帶分別固定膝部、髖部及骨折處對下位置。",
+        },
+        {
+          id: 5,
+          title: "運動員跨欄時跌倒",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 左膝腫脹，不能屈曲，有劇痛",
+            "b. 右手掌被欄架割傷，嚴重出血",
+          ],
+          diagnosis: "懷疑傷者左膝蓋骨折及右手掌嚴重出血。",
+          treatment:
+            "1. 右手掌：敷料按壓10秒，掌心包紮法，三角掛固定右手，檢查末端循環。\n2. 左膝：令傷者膝部稍微彎曲，以闊帶造成軟墊稍為包住傷處，以簡單螺旋法由下向上包紮好，再以柔軟物料承托起受傷部位。",
+        },
+        {
+          id: 6,
+          title: "操作機器時被機器夾傷手掌",
+          timeLimitMinutes: 8,
+          symptoms: [
+            "a. 左手掌紅腫、疼痛，失去活動能力",
+            "b. 頭部撞向一旁之機器，輕微出血，患者仍然清醒",
+          ],
+          diagnosis: "懷疑傷者左手掌骨折；頭部輕微出血。",
+          treatment:
+            "1. 頭部：敷料按壓傷口10秒，頭部包紮法，結在前額(在傷者背後做)。\n2. 左手掌：橫闊帶三文治式包住手掌，三角巾加橫闊帶固定左臂。",
+        },
+        {
+          id: 7,
+          title: "途人遭打劫並被鐵枝襲擊",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 右上臂近肘部疼痛，腫脹，失力且肘部不能屈曲",
+            "b. 左大腿被地上雜物擦傷，輕微出血",
+          ],
+          diagnosis: "懷疑傷者右上臂骨折且不能屈曲，左大腿輕微出血。",
+          treatment:
+            "1. 左大腿：受傷處以敷料按壓10秒，再以簡單螺旋包紮法處理，最後以柔軟物料承托腿部(稍高於心臟位置)。\n2. 右上臂(不能屈曲)：傷者需平臥，準備三條橫闊帶。第一條由頸部入再拉到受傷部位之上，另兩條則由腰入帶，一條在傷處對下位置，另一條在手腕附近。\n3. 先固定手腕對下位置(要看到手指)，再固定受傷部位之上位置，最後固定受傷部位之下位置。",
+        },
+        {
+          id: 8,
+          title: "守門員救球後跌倒",
+          timeLimitMinutes: 8,
+          symptoms: [
+            "a. 左前臂疼痛，紅腫，屈曲時痛楚加劇",
+            "b. 前額擦傷，輕微出血，並未失去知覺",
+          ],
+          diagnosis: "懷疑傷者左前臂骨折但可屈曲；前額輕微出血。",
+          treatment:
+            "1. 前額：敷料按壓10秒後以頭部包紮法處理。\n2. 左前臂：加入軟墊，以大手掛加橫闊帶固定左臂。",
+        },
+        {
+          id: 9,
+          title: "玩球與朋友碰撞",
+          timeLimitMinutes: 8,
+          symptoms: [
+            "a. 手掩左胸，傷處疼痛，深呼吸時痛楚加劇",
+            "b. 右腳跟被碎石擦傷，輕微出血",
+          ],
+          diagnosis: "懷疑傷者左胸非複雜性肋骨骨折及右腳跟輕微出血。",
+          treatment:
+            '1. 左胸：大手掛固定左臂以收間接固定受傷部位之效 (不需要加橫闊帶)。\n2. 右腳跟：敷料按壓10秒之後，稍為抬高，以"人"字帶包紮，再以柔軟物料承托於心臟高度。',
+        },
+        {
+          id: 10,
+          title: "油輪船員於甲板滑倒",
+          timeLimitMinutes: 10,
+          symptoms: [
+            "a. 右肩痛楚，頭側向右，並以左手承托右肘",
+            "b. 左腳掌被玻璃碎片割傷出血",
+          ],
+          diagnosis: "懷疑傷者右鎖骨骨折，左腳掌出血。",
+          treatment:
+            '1. 左腳掌：稍為抬高左腳，以敷料按壓10秒，加"8"字帶包紮，用柔軟物料承托左腳以高於心臟位置。\n2. 右鎖骨：以軟墊放於受傷一側的腋下，加三角掛及橫闊帶固定之。',
+        },
+        {
+          id: 11,
+          title: "婦人被塌下的天花板壓傷",
+          timeLimitMinutes: 12,
+          symptoms: [
+            "a. 左胸劇痛，呼吸淺速，並咳出鮮紅有泡之血液",
+            "b. 跌在地上時，右膝擦傷出血",
+          ],
+          diagnosis: "懷疑傷者左胸複雜性肋骨骨折；右膝出血。",
+          treatment:
+            '1. 左胸：軟墊加於左胸，三角掛固定之，讓傷者半坐臥及稍側向受傷部位。<< 注意：不能加橫闊帶 >>\n2. 右膝：以敷料按壓10秒，3" 人字帶包紮，再以柔軟物料承托腿部以稍高於心臟位置。',
+        },
+        {
+          id: 12,
+          title: "老婦在雨中滑倒",
+          timeLimitMinutes: 8,
+          symptoms: [
+            "a. 左手腕紅腫，疼痛，畸型且不能轉動",
+            "b. 右大腿擦傷出血",
+          ],
+          diagnosis: "懷疑傷者左手腕骨折；右大腿出血。",
+          treatment:
+            '1. 右大腿：敷料按壓10秒，3" 繃帶以簡單螺旋包紮。再讓傷者平臥，右腿以柔軟物料承托並稍高於心臟位置。\n2. 左手腕：以軟墊輕繞左手腕受傷部位，大手掛加橫闊帶固定。承托手部，檢查末端循環。',
+        },
+        {
+          id: 13,
+          title: "婦人在廚房滑倒撞向儲物櫃",
+          timeLimitMinutes: 8,
+          symptoms: [
+            "a. 右上臂疼痛，紅腫及失去活動能力",
+            "b. 左腳背被雜物割傷，輕微出血",
+          ],
+          diagnosis: "懷疑傷者右上臂骨折；左腳背出血。(註：肘部可以屈曲)",
+          treatment:
+            '1. 左腳背：稍為抬高左腿，敷料按壓受傷部位10秒，3" 八字帶包紮。\n2. 右上臂：以軟墊置於受傷部位與身體之間，大手掛及橫闊帶固定之。\n3. 再讓傷者平臥，承托腳部，檢查末端循環。',
+        },
+      ];
+
+      // App State Management
+      let currentFilter = "all";
+      let searchQuery = "";
+      let filteredIndices = [];
+      let currentFilteredIndex = 0;
+      let isFlipped = false;
+
+      // Timer Variables
+      let timerInterval = null;
+      let remainingSeconds = 0;
+      let timerTotalSeconds = 0;
+      let isTimerRunning = false;
+
+      // LocalStorage State for Progress Tracking
+      let cardProgress = JSON.parse(
+        localStorage.getItem("firstaid_quiz_progress") || "{}",
+      );
+
+      // DOM References
+      const flashcardEl = document.getElementById("flashcard");
+      const scenarioTitleEl = document.getElementById("scenario-title");
+      const timeLimitTextEl = document.getElementById("time-limit-text");
+      const symptomsListEl = document.getElementById("symptoms-list");
+      const diagnosisTextEl = document.getElementById("diagnosis-text");
+      const treatmentTextEl = document.getElementById("treatment-text");
+      const currentCardNumEl = document.getElementById("current-card-num");
+      const filteredCardTotalEl = document.getElementById(
+        "filtered-card-total",
+      );
+      const emptyStateEl = document.getElementById("empty-state");
+      const searchInputEl = document.getElementById("search-input");
+      const scenarioDropdownEl = document.getElementById("scenario-dropdown");
+
+      // Timer DOM References
+      const timerDisplayEl = document.getElementById("timer-display");
+      const timerBoxEl = document.getElementById("timer-box");
+      const timerIconEl = document.getElementById("timer-icon");
+      const btnStartEl = document.getElementById("btn-timer-start");
+      const btnPauseEl = document.getElementById("btn-timer-pause");
+      const autoStartToggle = document.getElementById("auto-start-toggle");
+
+      // Initialization
+      window.onload = function () {
+        setupSearchListener();
+        populateDropdown();
+        applyFiltersAndSearch();
+        updateStatsUI();
+        renderQuickNavGrid();
+
+        // Keyboard Shortcut Bindings
+        window.addEventListener("keydown", (e) => {
+          // Prevent trigger if writing inside search box
+          if (
+            document.activeElement === searchInputEl ||
+            document.activeElement === scenarioDropdownEl
+          )
+            return;
+
+          if (e.code === "Space") {
+            e.preventDefault();
+            toggleCardFlip();
+          } else if (e.code === "ArrowRight") {
+            nextCard();
+          } else if (e.code === "ArrowLeft") {
+            prevCard();
+          } else if (e.code === "KeyR") {
+            randomCard();
+          }
+        });
+      };
+
+      // Populate Scenario Dropdown
+      function populateDropdown() {
+        scenarioDropdownEl.innerHTML = `<option value="">-- 直接跳至個案情境 --</option>`;
+        scenariosData.forEach((scen) => {
+          const opt = document.createElement("option");
+          opt.value = scen.id;
+          opt.innerText = `${scen.id}. ${scen.title} (${scen.timeLimitMinutes}分鐘)`;
+          scenarioDropdownEl.appendChild(opt);
+        });
+      }
+
+      function jumpToSelectedScenario(idVal) {
+        if (!idVal) return;
+        jumpToCardById(parseInt(idVal));
+        scenarioDropdownEl.value = "";
+      }
+
+      // Card Flip
+      function toggleCardFlip() {
+        if (filteredIndices.length === 0) return;
+        isFlipped = !isFlipped;
+        if (isFlipped) {
+          flashcardEl.classList.add("is-flipped");
+        } else {
+          flashcardEl.classList.remove("is-flipped");
+        }
+      }
+
+      function resetFlipState() {
+        isFlipped = false;
+        flashcardEl.classList.remove("is-flipped");
+      }
+
+      // Render Current Flashcard & Reset Timer
+      function renderCurrentCard() {
+        if (filteredIndices.length === 0) {
+          flashcardEl.classList.add("hidden");
+          emptyStateEl.classList.remove("hidden");
+          currentCardNumEl.innerText = "0";
+          filteredCardTotalEl.innerText = "0";
+          pauseTimer();
+          timerDisplayEl.innerText = "--:--";
+          return;
+        }
+
+        flashcardEl.classList.remove("hidden");
+        emptyStateEl.classList.add("hidden");
+
+        const scenario = scenariosData[filteredIndices[currentFilteredIndex]];
+
+        // Populate Front
+        scenarioTitleEl.innerText = `${scenario.id}. ${scenario.title}`;
+        timeLimitTextEl.innerText = `${scenario.timeLimitMinutes} 分鐘`;
+
+        symptomsListEl.innerHTML = scenario.symptoms
+          .map(
+            (s) =>
+              `<p class="py-1 border-b border-slate-200/60 last:border-0">${escapeHtml(s)}</p>`,
+          )
+          .join("");
+
+        // Populate Back
+        diagnosisTextEl.innerText = scenario.diagnosis;
+        treatmentTextEl.innerText = scenario.treatment;
+
+        // Card Numbers
+        currentCardNumEl.innerText = (currentFilteredIndex + 1).toString();
+        filteredCardTotalEl.innerText = filteredIndices.length.toString();
+
+        // Reset Timer for new card scenario
+        setupTimerForCard(scenario.timeLimitMinutes);
+
+        highlightQuickNav();
+      }
+
+      // Timer Logic implementation
+      function setupTimerForCard(minutes) {
+        pauseTimer();
+        remainingSeconds = minutes * 60;
+        timerTotalSeconds = remainingSeconds;
+        updateTimerDisplayUI();
+
+        if (autoStartToggle.checked) {
+          startTimer();
+        }
+      }
+
+      function startTimer() {
+        if (isTimerRunning || remainingSeconds <= 0) return;
+        isTimerRunning = true;
+
+        btnStartEl.disabled = true;
+        btnStartEl.classList.add("opacity-50", "cursor-not-allowed");
+        btnPauseEl.disabled = false;
+        btnPauseEl.classList.remove("opacity-50", "cursor-not-allowed");
+
+        timerInterval = setInterval(() => {
+          remainingSeconds--;
+          updateTimerDisplayUI();
+
+          if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            onTimerExpired();
+          }
+        }, 1000);
+      }
+
+      function pauseTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        isTimerRunning = false;
+
+        btnStartEl.disabled = false;
+        btnStartEl.classList.remove("opacity-50", "cursor-not-allowed");
+        btnPauseEl.disabled = true;
+        btnPauseEl.classList.add("opacity-50", "cursor-not-allowed");
+      }
+
+      function resetTimer() {
+        pauseTimer();
+        if (filteredIndices.length > 0) {
+          const scenario = scenariosData[filteredIndices[currentFilteredIndex]];
+          remainingSeconds = scenario.timeLimitMinutes * 60;
+        }
+        updateTimerDisplayUI();
+      }
+
+      function updateTimerDisplayUI() {
+        const mins = Math.floor(remainingSeconds / 60);
+        const secs = remainingSeconds % 60;
+        timerDisplayEl.innerText = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+
+        // Timer Warning Color Logic
+        if (remainingSeconds <= 60 && remainingSeconds > 0) {
+          timerBoxEl.classList.add("timer-warning");
+          timerIconEl.className =
+            "fa-solid fa-bell text-2xl text-red-600 animate-bounce";
+        } else {
+          timerBoxEl.classList.remove("timer-warning");
+          timerIconEl.className =
+            "fa-solid fa-stopwatch text-2xl text-slate-600";
+        }
+      }
+
+      function onTimerExpired() {
+        timerDisplayEl.innerText = "00:00 - 時間到!";
+        timerBoxEl.classList.add("timer-warning");
+        playWarningBeep();
+      }
+
+      // Web Audio Sound Effect for Timer
+      function playWarningBeep() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 880; // A5 pitch
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          gain.gain.exponentialRampToValueAtTime(
+            0.00001,
+            ctx.currentTime + 0.8,
+          );
+        } catch (e) {
+          // Fallback if browser blocks Web Audio
+        }
+      }
+
+      // Navigation Actions
+      function nextCard() {
+        if (filteredIndices.length <= 1) return;
+        resetFlipState();
+        setTimeout(
+          () => {
+            currentFilteredIndex =
+              (currentFilteredIndex + 1) % filteredIndices.length;
+            renderCurrentCard();
+          },
+          isFlipped ? 200 : 0,
+        );
+      }
+
+      function prevCard() {
+        if (filteredIndices.length <= 1) return;
+        resetFlipState();
+        setTimeout(
+          () => {
+            currentFilteredIndex =
+              (currentFilteredIndex - 1 + filteredIndices.length) %
+              filteredIndices.length;
+            renderCurrentCard();
+          },
+          isFlipped ? 200 : 0,
+        );
+      }
+
+      function randomCard() {
+        if (filteredIndices.length <= 1) return;
+        resetFlipState();
+        setTimeout(
+          () => {
+            let newIndex = currentFilteredIndex;
+            while (newIndex === currentFilteredIndex) {
+              newIndex = Math.floor(Math.random() * filteredIndices.length);
+            }
+            currentFilteredIndex = newIndex;
+            renderCurrentCard();
+          },
+          isFlipped ? 200 : 0,
+        );
+      }
+
+      function jumpToCardById(id) {
+        const idxInFiltered = filteredIndices.findIndex(
+          (i) => scenariosData[i].id === id,
+        );
+        if (idxInFiltered !== -1) {
+          resetFlipState();
+          setTimeout(
+            () => {
+              currentFilteredIndex = idxInFiltered;
+              renderCurrentCard();
+            },
+            isFlipped ? 200 : 0,
+          );
+        }
+      }
+
+      // Progress Assessment
+      function markStatus(status) {
+        if (filteredIndices.length === 0) return;
+        const currentId =
+          scenariosData[filteredIndices[currentFilteredIndex]].id;
+
+        cardProgress[currentId] = status;
+        localStorage.setItem(
+          "firstaid_quiz_progress",
+          JSON.stringify(cardProgress),
+        );
+
+        updateStatsUI();
+        renderQuickNavGrid();
+        nextCard();
+      }
+
+      function resetProgress() {
+        if (confirm("確定要重置所有卡片的學習進度嗎？")) {
+          cardProgress = {};
+          localStorage.removeItem("firstaid_quiz_progress");
+          updateStatsUI();
+          applyFiltersAndSearch();
+          renderQuickNavGrid();
+        }
+      }
+
+      // Filter and Search System
+      function setFilter(filterType) {
+        currentFilter = filterType;
+
+        document.querySelectorAll(".filter-btn").forEach((btn) => {
+          btn.className =
+            "filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition";
+        });
+
+        const activeBtn = document.getElementById(`btn-filter-${filterType}`);
+        if (activeBtn) {
+          activeBtn.className =
+            "filter-btn px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white shadow-sm transition";
+        }
+
+        applyFiltersAndSearch();
+      }
+
+      function setupSearchListener() {
+        searchInputEl.addEventListener("input", (e) => {
+          searchQuery = e.target.value.trim().toLowerCase();
+          applyFiltersAndSearch();
+        });
+      }
+
+      function applyFiltersAndSearch() {
+        filteredIndices = [];
+
+        scenariosData.forEach((item, index) => {
+          const progress = cardProgress[item.id];
+
+          let passFilter = false;
+          if (currentFilter === "all") passFilter = true;
+          else if (currentFilter === "unlearned" && !progress)
+            passFilter = true;
+          else if (currentFilter === "review" && progress === "review")
+            passFilter = true;
+          else if (currentFilter === "mastered" && progress === "mastered")
+            passFilter = true;
+
+          let passSearch = true;
+          if (searchQuery) {
+            const matchTitle = item.title.toLowerCase().includes(searchQuery);
+            const matchDiag = item.diagnosis
+              .toLowerCase()
+              .includes(searchQuery);
+            const matchTreat = item.treatment
+              .toLowerCase()
+              .includes(searchQuery);
+            const matchSymp = item.symptoms.some((s) =>
+              s.toLowerCase().includes(searchQuery),
+            );
+            passSearch = matchTitle || matchDiag || matchTreat || matchSymp;
+          }
+
+          if (passFilter && passSearch) {
+            filteredIndices.push(index);
+          }
+        });
+
+        currentFilteredIndex = 0;
+        resetFlipState();
+        renderCurrentCard();
+        renderQuickNavGrid();
+      }
+
+      function updateStatsUI() {
+        let masteredCount = 0;
+        let reviewCount = 0;
+
+        scenariosData.forEach((item) => {
+          const st = cardProgress[item.id];
+          if (st === "mastered") masteredCount++;
+          else if (st === "review") reviewCount++;
+        });
+
+        const unlearnedCount =
+          scenariosData.length - (masteredCount + reviewCount);
+
+        document.getElementById("stat-total").innerText = scenariosData.length;
+        document.getElementById("stat-mastered").innerText = masteredCount;
+        document.getElementById("stat-review").innerText = reviewCount;
+
+        document.getElementById("cnt-all").innerText = scenariosData.length;
+        document.getElementById("cnt-unlearned").innerText = unlearnedCount;
+        document.getElementById("cnt-review").innerText = reviewCount;
+        document.getElementById("cnt-mastered").innerText = masteredCount;
+      }
+
+      function renderQuickNavGrid() {
+        const gridEl = document.getElementById("quick-nav-grid");
+        gridEl.innerHTML = "";
+
+        scenariosData.forEach((item) => {
+          const status = cardProgress[item.id];
+          let statusBadge = `<span class="w-2 h-2 rounded-full bg-slate-300"></span>`;
+          let borderClass = `border-slate-200 bg-slate-50 text-slate-700`;
+
+          if (status === "mastered") {
+            statusBadge = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>`;
+            borderClass = `border-emerald-200 bg-emerald-50/50 text-emerald-900`;
+          } else if (status === "review") {
+            statusBadge = `<span class="w-2 h-2 rounded-full bg-amber-500"></span>`;
+            borderClass = `border-amber-200 bg-amber-50/50 text-amber-900`;
+          }
+
+          const isFiltered = filteredIndices.some(
+            (idx) => scenariosData[idx].id === item.id,
+          );
+          const opacityClass = isFiltered
+            ? "opacity-100 cursor-pointer hover:border-red-400"
+            : "opacity-40 cursor-not-allowed";
+
+          const btn = document.createElement("button");
+          btn.id = `nav-item-${item.id}`;
+          btn.className = `p-2 rounded-lg border text-xs font-medium text-left flex items-center justify-between transition ${borderClass} ${opacityClass}`;
+          btn.innerHTML = `
+          <span class="truncate pr-1">${item.id}. ${escapeHtml(item.title)}</span>
+          ${statusBadge}
+        `;
+
+          if (isFiltered) {
+            btn.onclick = () => jumpToCardById(item.id);
+          }
+
+          gridEl.appendChild(btn);
+        });
+
+        highlightQuickNav();
+      }
+
+      function highlightQuickNav() {
+        document.querySelectorAll("#quick-nav-grid button").forEach((b) => {
+          b.classList.remove("ring-2", "ring-red-500", "shadow-md");
+        });
+
+        if (filteredIndices.length > 0) {
+          const activeId =
+            scenariosData[filteredIndices[currentFilteredIndex]].id;
+          const activeNavBtn = document.getElementById(`nav-item-${activeId}`);
+          if (activeNavBtn) {
+            activeNavBtn.classList.add("ring-2", "ring-red-500", "shadow-md");
+          }
+        }
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    </script>
+  </body>
+</html>
